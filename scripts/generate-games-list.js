@@ -3,7 +3,7 @@ const path = require('path');
 
 const ROOT = process.cwd();
 const OUT = path.join(ROOT, 'games.json');
-const IGNORES = new Set(['node_modules', '.git', '.vscode', '.github', 'scripts']); // skip generator folder
+const IGNORES = new Set(['node_modules', '.git', '.vscode', '.github', 'scripts']);
 
 function walk(dir, cb) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -15,17 +15,25 @@ function walk(dir, cb) {
   }
 }
 
-const games = [];
-walk(ROOT, (file) => {
-  const rel = path.relative(ROOT, file).replace(/\\/g, '/');
-  const lower = file.toLowerCase();
-  if ((lower.endsWith('.html') || lower.endsWith('.htm')) && !/(^|\/)index\.html?$/i.test(rel)) {
-    games.push({
-      name: path.basename(file),
-      path: './' + rel
-    });
-  }
-});
+function generate() {
+  const games = [];
+  walk(ROOT, (file) => {
+    const rel = path.relative(ROOT, file).replace(/\\/g, '/');
+    const lower = file.toLowerCase();
+    if ((lower.endsWith('.html') || lower.endsWith('.htm')) && !/(^|\/)index\.html?$/i.test(rel)) {
+      games.push({
+        name: path.basename(file),
+        path: './' + rel
+      });
+    }
+  });
+  fs.writeFileSync(OUT, JSON.stringify(games, null, 2));
+  console.log(`Wrote ${games.length} entries to ${OUT}`);
+  return games;
+}
 
-fs.writeFileSync(OUT, JSON.stringify(games, null, 2));
-console.log(`Wrote ${games.length} entries to ${OUT}`);
+module.exports = generate;
+
+if (require.main === module) {
+  generate();
+}

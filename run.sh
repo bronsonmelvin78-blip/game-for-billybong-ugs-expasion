@@ -1,19 +1,36 @@
 #!/usr/bin/env bash
-set -e
-# Generate games.json
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+# Generate games.json once and then start the watch-and-serve server
 node scripts/generate-games-list.js
 
-# Serve
 PORT=8000
-echo "Serving on http://localhost:${PORT}"
-python3 -m http.server ${PORT} & SERVER_PID=$!
+PIDFILE=".games-server.pid"
 
-# Try to open host browser if $BROWSER present
-sleep 1
-if [ -n "$BROWSER" ]; then
-  "$BROWSER" "http://localhost:${PORT}" || true
-else
-  echo 'Open http://localhost:8000 in your browser (or set $BROWSER and re-run run.sh)'
+if [ -f "$PIDFILE" ]; then
+  OLD_PID=$(cat "$PIDFILE" 2>/dev/null || true)
+  if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+    echo "Killing existing server (PID $OLD_PID)"
+    kill "$OLD_PID" || true
+    sleep 0.5
+  fi
+  rm -f "$PIDFILE"
 fi
 
-wait ${SERVER_PID}
+echo "Starting watch-and-serve server on port ${PORT}"
+node scripts/watch-and-serve.js >/dev/null 2>&1 &
+SERVER_PID=$!
+echo "${SERVER_PID}" > "$PIDFILE"
+sleep 0.5
+
+URL="http://localhost:${PORT}"
+if [ -n "${BROWSER-}" ]; then
+  echo "Opening browser: $URL"
+  "$BROWSER" "$URL" || echo "Failed to open browser with \$BROWSER"
+else
+  echo "Open ${URL} in your browser"
+fi
+
+wait "$SERVER_PID"

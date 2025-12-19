@@ -41,11 +41,29 @@ async function load() {
   } catch (err) {
     document.getElementById('list').innerHTML = '<div>games.json not found.</div>';
     document.getElementById('hint').innerHTML =
-      'Run the generator: <code>node scripts/generate-games-list.js</code> then serve (e.g. <code>./run.sh</code> or <code>python3 -m http.server 8000</code>).';
+      'The repository generates games.json automatically on push and when the devcontainer starts. If you want to run locally: <code>bash ./run.sh</code>';
   }
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 load();
+
+// new: listen for server-sent events and reload the list when games update
+if (typeof EventSource !== 'undefined') {
+  try {
+    const es = new EventSource('/events');
+    es.addEventListener('games-updated', () => {
+      console.log('games-updated event received; reloading list');
+      load();
+    });
+    es.onerror = () => { /* network errors will be retried by the browser */ };
+  } catch (e) {
+    // ignore and fall back to polling
+    setInterval(load, 5000);
+  }
+} else {
+  // fallback polling for browsers without EventSource
+  setInterval(load, 5000);
+}
 </script>
 </body>
 </html>
