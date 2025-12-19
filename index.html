@@ -32,19 +32,22 @@ async function load() {
       const el = document.createElement('div');
       el.className = 'card';
       el.tabIndex = 0;
-      el.innerHTML = `<div><strong>${escapeHtml(g.name)}</strong></div><div class="meta">${escapeHtml(g.path)}</div>`;
-      const open = () => window.open(g.path, '_blank', 'noopener');
-      el.addEventListener('click', open);
-      el.addEventListener('keypress', (e) => { if (e.key === 'Enter') open(); });
+      el.innerHTML = `<div><strong>${escapeHtml(g.name)}</strong></div>
+                      <div class="meta">${escapeHtml(g.path)}</div>`;
+      el.addEventListener('click', () => window.open(g.path, '_blank', 'noopener'));
+      el.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.open(g.path, '_blank', 'noopener'); });
       list.appendChild(el);
     }
   } catch (err) {
-    document.getElementById('list').innerHTML = '<div>games.json not found.</div>';
-    document.getElementById('hint').innerHTML =
-      'The repository generates games.json automatically on push and when the devcontainer starts. If you want to run locally: <code>bash ./run.sh</code>';
+    document.getElementById('list').innerHTML = '<div>Unable to load games list.</div>';
+    // concise automatic-fallback message; CI will update games.json and site is published to GitHub Pages
+    document.getElementById('hint').textContent =
+      'The games list is generated automatically on push and published via GitHub Pages; no manual steps are required.';
   }
 }
-function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
 load();
 
 // new: listen for server-sent events and reload the list when games update
