@@ -3,7 +3,7 @@ const path = require('path');
 
 const ROOT = process.cwd();
 const OUT = path.join(ROOT, 'games.json');
-const IGNORES = new Set(['node_modules', '.git', '.vscode', 'scripts', '.github']);
+const IGNORES = new Set(['node_modules', '.git', '.vscode', '.github', 'scripts']); // skip generator folder
 
 function walk(dir, cb) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
