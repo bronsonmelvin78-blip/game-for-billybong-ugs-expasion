@@ -1,0 +1,5 @@
+{
+  "name": "ugs-files-sorted",
+  "forwardPorts": [8000],
+  "postStartCommand": "bash ./run.sh &"
+}
