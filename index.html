@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Games Index</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px; }
+  h1 { margin-bottom: 12px; }
+  #list { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); }
+  .card { padding: 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; }
+  .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .meta { color: #666; font-size: 13px; margin-top: 6px; }
+  .hint { margin-top: 18px; color: #555; font-size: 14px; }
+</style>
+</head>
+<body>
+  <h1>Games in this repo</h1>
+  <div id="list">Loading…</div>
+  <div class="hint" id="hint"></div>
+
+<script>
+async function load() {
+  try {
+    const res = await fetch('./games.json', {cache: 'no-store'});
+    if (!res.ok) throw new Error('games.json not found');
+    const games = await res.json();
+    const list = document.getElementById('list');
+    list.innerHTML = '';
+    if (!games.length) {
+      list.innerHTML = '<div>No game files found in games.json.</div>';
+      return;
+    }
+    for (const g of games) {
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.tabIndex = 0;
+      el.innerHTML = `<div><strong>${escapeHtml(g.name)}</strong></div>
+                      <div class="meta">${escapeHtml(g.path)}</div>`;
+      el.addEventListener('click', () => window.open(g.path, '_blank', 'noopener'));
+      el.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.open(g.path, '_blank', 'noopener'); });
+      list.appendChild(el);
+    }
+  } catch (err) {
+    document.getElementById('list').innerHTML = '<div>games.json not found.</div>';
+    document.getElementById('hint').innerHTML =
+      'Run the generator to create games.json: <code>node scripts/generate-games-list.js</code>. Then serve the folder with a static server (e.g. <code>python -m http.server</code> or <code>npx serve .</code>) and open this index page.';
+  }
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+load();
+</script>
+</body>
+</html>
