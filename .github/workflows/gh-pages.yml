@@ -2,20 +2,40 @@ name: Publish site to gh-pages
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+
       - name: Generate games.json
         run: node scripts/generate-games-list.js
+
+      - name: Commit games.json back to repo if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add games.json || true
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore: update games.json [skip ci]' || true
+            git push origin HEAD:main || true
+          else
+            echo "No changes to commit"
+          fi
+
       - name: Create .nojekyll
         run: touch .nojekyll
+
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:

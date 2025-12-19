@@ -50,6 +50,26 @@ function regenerateIfChanged() {
 
 const server = http.createServer((req, res) => {
   const url = decodeURI(req.url.split('?')[0]);
+
+  if (url === '/generate') {
+    // allow simple cross-origin fetches for convenience
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    try {
+      const games = generate(); // writes games.json
+      const str = JSON.stringify(games, null, 2);
+      if (str !== lastGamesJson) {
+        lastGamesJson = str;
+        sendSSE('games-updated', '1');
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(str);
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: String(err) }));
+    }
+    return;
+  }
+
   if (url === '/events') {
     // SSE endpoint
     res.writeHead(200, {
