@@ -89,18 +89,47 @@ function openInBlankThenNavigate(href) {
   const w = window.open('about:blank', '_blank');
   if (!w) return;
   try {
-    // show a minimal "Opening…" blank page, then redirect shortly so the new tab shows about:blank initially
+    // show a minimal "Opening…" blank page (writing may fail on some browsers)
     w.document.write(
       '<!doctype html><meta charset="utf-8"><title>Loading…</title>' +
-      '<style>body{background:#fff;color:#333;font-family:system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}</style>' +
-      '<div>Opening…</div>' +
-      '<script>setTimeout(()=>{location.href=' + JSON.stringify(href) + '},150)</script>'
+      '<style>body{background:#fff;color:#333;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}</style>' +
+      '<div>Opening…</div>'
     );
     w.document.close();
   } catch (e) {
-    // fallback if writing is blocked
-    try { w.location = href; } catch (e2) { /* ignore */ }
+    // ignore if writing is blocked
   }
+
+  const navigate = () => {
+    try { w.location.href = href; return true; } catch (e) {
+      try { w.location.replace(href); return true; } catch (e2) { return false; }
+    }
+  };
+
+  // schedule navigation from the opener (more reliable than relying on a script in the new doc)
+  setTimeout(() => {
+    if (!navigate()) setTimeout(navigate, 150);
+  }, 150);
+
+  // retry a few times if the tab remains on about:blank
+  let attempts = 0;
+  const maxAttempts = 4;
+  const t = setInterval(() => {
+    attempts++;
+    try {
+      if (w.closed) { clearInterval(t); return; }
+      if (w.location && w.location.href && w.location.href !== 'about:blank') { clearInterval(t); return; }
+    } catch (err) {
+      // cross-origin error implies navigation succeeded
+      clearInterval(t); return;
+    }
+    if (attempts >= maxAttempts) {
+      try { w.location = href; } catch (_) { /* ignore */ }
+      clearInterval(t);
+    } else {
+      navigate();
+    }
+  }, 500);
 }
 </script>
 </body>
