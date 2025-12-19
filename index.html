@@ -29,29 +29,19 @@ async function load() {
     list.innerHTML = '';
     if (!games.length) { list.innerHTML = '<div>No game files found.</div>'; return; }
     for (const g of games) {
-      // make the card an actual link so middle/ctrl-clicks behave like normal links
+      // make the card an actual link that opens about:blank so the new tab stays blank
       const a = document.createElement('a');
       a.className = 'card';
-      a.href = g.path;
+      a.href = 'about:blank';
       a.target = '_blank';
       a.rel = 'noopener';
+      a.setAttribute('data-game-href', g.path);
       a.innerHTML = `<div><strong>${escapeHtml(g.name)}</strong></div>
                      <div class="meta">${escapeHtml(g.path)}</div>`;
-      // left-click without modifiers: open about:blank then navigate
-      a.addEventListener('click', (e) => {
-        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        e.preventDefault();
-        openInBlankThenNavigate(g.path);
-      });
-      // middle-click: also use the helper for the interim about:blank
-      a.addEventListener('auxclick', (e) => {
-        if (e.button === 1 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
-          e.preventDefault();
-          openInBlankThenNavigate(g.path);
-        }
-      });
-      // keyboard Enter
-      a.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); openInBlankThenNavigate(g.path); } });
+      // always prevent default navigation and open a blank tab that stays blank
+      a.addEventListener('click', (e) => { e.preventDefault(); openBlankAndStay(g); });
+      a.addEventListener('auxclick', (e) => { e.preventDefault(); openBlankAndStay(g); });
+      a.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); openBlankAndStay(g); } });
       list.appendChild(a);
     }
   } catch (err) {
@@ -84,52 +74,21 @@ if (typeof EventSource !== 'undefined') {
   setInterval(load, 5000);
 }
 
-// new helper: open about:blank first, then navigate (shows about:blank momentarily)
-function openInBlankThenNavigate(href) {
+// open about:blank and leave it there (no redirect)
+function openBlankAndStay(g) {
   const w = window.open('about:blank', '_blank');
   if (!w) return;
   try {
-    // show a minimal "Opening…" blank page (writing may fail on some browsers)
+    const safePath = escapeHtml(g.path);
     w.document.write(
-      '<!doctype html><meta charset="utf-8"><title>Loading…</title>' +
-      '<style>body{background:#fff;color:#333;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}</style>' +
-      '<div>Opening…</div>'
+      '<!doctype html><meta charset="utf-8"><title>Blank</title>' +
+      '<style>body{background:#fff;color:#333;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;padding:24px;text-align:center}</style>' +
+      `<div style="max-width:600px"><strong>Opened blank for ${escapeHtml(g.name)}</strong><div style="margin-top:12px;color:#666">${safePath}</div></div>`
     );
     w.document.close();
   } catch (e) {
-    // ignore if writing is blocked
+    // ignore if writing is blocked; the tab will remain about:blank
   }
-
-  const navigate = () => {
-    try { w.location.href = href; return true; } catch (e) {
-      try { w.location.replace(href); return true; } catch (e2) { return false; }
-    }
-  };
-
-  // schedule navigation from the opener (more reliable than relying on a script in the new doc)
-  setTimeout(() => {
-    if (!navigate()) setTimeout(navigate, 150);
-  }, 150);
-
-  // retry a few times if the tab remains on about:blank
-  let attempts = 0;
-  const maxAttempts = 4;
-  const t = setInterval(() => {
-    attempts++;
-    try {
-      if (w.closed) { clearInterval(t); return; }
-      if (w.location && w.location.href && w.location.href !== 'about:blank') { clearInterval(t); return; }
-    } catch (err) {
-      // cross-origin error implies navigation succeeded
-      clearInterval(t); return;
-    }
-    if (attempts >= maxAttempts) {
-      try { w.location = href; } catch (_) { /* ignore */ }
-      clearInterval(t);
-    } else {
-      navigate();
-    }
-  }, 500);
 }
 </script>
 </body>
